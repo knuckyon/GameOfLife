@@ -5,6 +5,8 @@
 #include "AppConfig.h"
 #include "Utils.h"
 
+#include <algorithm>
+
 void UpdateCameraControls(GameState& game) {
     if (IsMouseButtonDown(MOUSE_BUTTON_MIDDLE)) {
         const Vector2 delta = GetMouseDelta();
@@ -18,12 +20,11 @@ void UpdateCameraControls(GameState& game) {
     if (wheel != 0.0f && !IsMouseOverSidePanel()) {
         const Vector2 mouseWorldBeforeZoom = GetScreenToWorld2D(GetMousePosition(), game.camera);
 
-        game.camera.zoom += wheel * 0.1f * game.camera.zoom;
-        game.camera.zoom = static_cast<float>(ClampInt(
-            static_cast<int>(game.camera.zoom * 1000.0f),
-            static_cast<int>(cfg::MIN_CAMERA_ZOOM * 1000.0f),
-            static_cast<int>(cfg::MAX_CAMERA_ZOOM * 1000.0f)
-        )) / 1000.0f;
+        game.camera.zoom = std::clamp(
+            game.camera.zoom + wheel * 0.1f * game.camera.zoom,
+            cfg::MIN_CAMERA_ZOOM,
+            cfg::MAX_CAMERA_ZOOM
+        );
 
         const Vector2 mouseWorldAfterZoom = GetScreenToWorld2D(GetMousePosition(), game.camera);
         game.camera.target = Vector2Add(

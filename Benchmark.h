@@ -1,5 +1,8 @@
 #pragma once
 
+#include <string>
+#include <string_view>
+
 struct BenchmarkConfig {
     int rows = 500;
     int cols = 500;
@@ -22,7 +25,7 @@ struct BenchmarkConfig {
 };
 
 struct BenchmarkResult {
-    const char* modeName = "unknown";
+    std::string_view modeName = "unknown";
 
     int rows = 0;
     int cols = 0;
@@ -48,3 +51,11 @@ BenchmarkResult RunSequentialBenchmark(const BenchmarkConfig& config);
 BenchmarkResult RunOpenMpBenchmark(const BenchmarkConfig& config);
 
 void PrintBenchmarkResult(const BenchmarkResult& result);
+
+// Builds a CSV filename from the result: benchmark_[mode]_[rows]x[cols].csv
+// placed in cfg::BENCHMARK_OUTPUT_DIR.
+std::string BuildCsvPath(const BenchmarkResult& result);
+
+// Writes result to a new CSV file (never appends to an existing file).
+// The file path is built automatically via BuildCsvPath.
+void AppendBenchmarkCsv(const BenchmarkResult& result);

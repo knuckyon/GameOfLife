@@ -15,6 +15,34 @@ namespace {
     constexpr int SLIDER_HITBOX_OFFSET_Y = 12;
     constexpr int BUTTON_HEIGHT = 34;
 
+    // Vertical layout for slider labels
+    constexpr int SLIDER_ROWS_Y = 198;
+    constexpr int SLIDER_COLS_Y = SLIDER_ROWS_Y + 58;
+    constexpr int SLIDER_ALIVE_Y = SLIDER_COLS_Y + 58;
+    constexpr int SLIDER_SPEED_Y = SLIDER_ALIVE_Y + 58;
+
+    // Button row layout
+    constexpr int BUTTON_ROW1_Y = SLIDER_SPEED_Y + 58;
+    constexpr int BUTTON_ROW2_Y = BUTTON_ROW1_Y + BUTTON_HEIGHT + 10;
+    constexpr int BUTTON_WIDTH = 104;
+    constexpr int BUTTON_COL2_X = PANEL_X + 120;
+
+    struct PanelButtons {
+        Rectangle apply;
+        Rectangle random;
+        Rectangle clear;
+        Rectangle center;
+    };
+
+    PanelButtons GetPanelButtons() {
+        return {
+            { static_cast<float>(PANEL_X),        static_cast<float>(BUTTON_ROW1_Y), static_cast<float>(BUTTON_WIDTH), static_cast<float>(BUTTON_HEIGHT) },
+            { static_cast<float>(BUTTON_COL2_X),  static_cast<float>(BUTTON_ROW1_Y), static_cast<float>(BUTTON_WIDTH), static_cast<float>(BUTTON_HEIGHT) },
+            { static_cast<float>(PANEL_X),        static_cast<float>(BUTTON_ROW2_Y), static_cast<float>(BUTTON_WIDTH), static_cast<float>(BUTTON_HEIGHT) },
+            { static_cast<float>(BUTTON_COL2_X),  static_cast<float>(BUTTON_ROW2_Y), static_cast<float>(BUTTON_WIDTH), static_cast<float>(BUTTON_HEIGHT) },
+        };
+    }
+
     void DrawTextLine(const char* text, int x, int& y, int fontSize, Color color, int lineSpacing = 22) {
         DrawText(text, x, y, fontSize, color);
         y += lineSpacing;
@@ -76,22 +104,6 @@ namespace {
             static_cast<float>(SLIDER_HITBOX_HEIGHT)
         };
     }
-
-    Rectangle RowSliderRect() {
-        return SliderHitbox(198);
-    }
-
-    Rectangle ColSliderRect() {
-        return SliderHitbox(256);
-    }
-
-    Rectangle AliveSliderRect() {
-        return SliderHitbox(314);
-    }
-
-    Rectangle SpeedSliderRect() {
-        return SliderHitbox(372);
-    }
 }
 
 void UpdateSidePanelControls(GameState& game) {
@@ -99,32 +111,29 @@ void UpdateSidePanelControls(GameState& game) {
         return;
     }
 
-    game.pendingRows = SliderInt(RowSliderRect(), game.pendingRows, cfg::MIN_GRID_ROWS, cfg::MAX_GRID_ROWS);
-    game.pendingCols = SliderInt(ColSliderRect(), game.pendingCols, cfg::MIN_GRID_COLS, cfg::MAX_GRID_COLS);
-    game.initialAlivePercent = SliderInt(AliveSliderRect(), game.initialAlivePercent,
+    game.pendingRows = SliderInt(SliderHitbox(SLIDER_ROWS_Y), game.pendingRows, cfg::MIN_GRID_ROWS, cfg::MAX_GRID_ROWS);
+    game.pendingCols = SliderInt(SliderHitbox(SLIDER_COLS_Y), game.pendingCols, cfg::MIN_GRID_COLS, cfg::MAX_GRID_COLS);
+    game.initialAlivePercent = SliderInt(SliderHitbox(SLIDER_ALIVE_Y), game.initialAlivePercent,
         cfg::MIN_INITIAL_ALIVE_PERCENT, cfg::MAX_INITIAL_ALIVE_PERCENT);
-    game.speedMultiplier = SliderInt(SpeedSliderRect(), game.speedMultiplier,
+    game.speedMultiplier = SliderInt(SliderHitbox(SLIDER_SPEED_Y), game.speedMultiplier,
         cfg::MIN_SPEED_MULTIPLIER, cfg::MAX_SPEED_MULTIPLIER);
 
-    const Rectangle applyButton{ static_cast<float>(PANEL_X), 430.0f, 104.0f, static_cast<float>(BUTTON_HEIGHT) };
-    const Rectangle randomButton{ static_cast<float>(PANEL_X + 120), 430.0f, 104.0f, static_cast<float>(BUTTON_HEIGHT) };
-    const Rectangle clearButton{ static_cast<float>(PANEL_X), 474.0f, 104.0f, static_cast<float>(BUTTON_HEIGHT) };
-    const Rectangle centerButton{ static_cast<float>(PANEL_X + 120), 474.0f, 104.0f, static_cast<float>(BUTTON_HEIGHT) };
+    const PanelButtons btns = GetPanelButtons();
 
-    if (ButtonPressed(applyButton)) {
+    if (ButtonPressed(btns.apply)) {
         ResizeGrid(game, game.pendingRows, game.pendingCols);
         ResetCamera(game);
     }
 
-    if (ButtonPressed(randomButton)) {
+    if (ButtonPressed(btns.random)) {
         RandomizeGrid(game);
     }
 
-    if (ButtonPressed(clearButton)) {
+    if (ButtonPressed(btns.clear)) {
         ClearGrid(game);
     }
 
-    if (ButtonPressed(centerButton)) {
+    if (ButtonPressed(btns.center)) {
         ResetCamera(game);
     }
 }
@@ -140,29 +149,24 @@ void DrawSidePanel(const GameState& game) {
     DrawTextLine(game.isPaused ? "Status: PAUSED" : "Status: RUNNING", PANEL_X, y, 18,
         game.isPaused ? cfg::DANGER_COLOR : cfg::ALIVE_CELL_COLOR, 28);
 
-    DrawTextLine(("Generation: " + std::to_string(game.generation)).c_str(), PANEL_X, y, 16, cfg::TEXT_MAIN_COLOR);
-    DrawTextLine(("Alive cells: " + std::to_string(game.aliveCells)).c_str(), PANEL_X, y, 16, cfg::TEXT_MAIN_COLOR);
-    DrawTextLine(("Field: " + std::to_string(game.rows) + " x " + std::to_string(game.cols)).c_str(), PANEL_X, y, 16, cfg::TEXT_MAIN_COLOR);
-    DrawTextLine(("Zoom: " + std::to_string(static_cast<int>(game.camera.zoom * 100)) + "%").c_str(), PANEL_X, y, 16, cfg::TEXT_MAIN_COLOR);
-    DrawTextLine(("Speed: x" + std::to_string(game.speedMultiplier)).c_str(), PANEL_X, y, 16, cfg::TEXT_MAIN_COLOR);
+    DrawTextLine(TextFormat("Generation: %d", game.generation), PANEL_X, y, 16, cfg::TEXT_MAIN_COLOR);
+    DrawTextLine(TextFormat("Alive cells: %d", game.aliveCells), PANEL_X, y, 16, cfg::TEXT_MAIN_COLOR);
+    DrawTextLine(TextFormat("Field: %d x %d", game.rows, game.cols), PANEL_X, y, 16, cfg::TEXT_MAIN_COLOR);
+    DrawTextLine(TextFormat("Zoom: %d%%", static_cast<int>(game.camera.zoom * 100)), PANEL_X, y, 16, cfg::TEXT_MAIN_COLOR);
+    DrawTextLine(TextFormat("Speed: x%d", game.speedMultiplier), PANEL_X, y, 16, cfg::TEXT_MAIN_COLOR);
 
-    DrawSliderInt("Rows", game.pendingRows, cfg::MIN_GRID_ROWS, cfg::MAX_GRID_ROWS, PANEL_X, 198);
-    DrawSliderInt("Cols", game.pendingCols, cfg::MIN_GRID_COLS, cfg::MAX_GRID_COLS, PANEL_X, 256);
-    DrawSliderInt("Initial alive", game.initialAlivePercent,
-        cfg::MIN_INITIAL_ALIVE_PERCENT, cfg::MAX_INITIAL_ALIVE_PERCENT, PANEL_X, 314);
-    DrawSliderInt("Speed", game.speedMultiplier, cfg::MIN_SPEED_MULTIPLIER, cfg::MAX_SPEED_MULTIPLIER, PANEL_X, 372);
+    DrawSliderInt("Rows", game.pendingRows, cfg::MIN_GRID_ROWS, cfg::MAX_GRID_ROWS, PANEL_X, SLIDER_ROWS_Y);
+    DrawSliderInt("Cols", game.pendingCols, cfg::MIN_GRID_COLS, cfg::MAX_GRID_COLS, PANEL_X, SLIDER_COLS_Y);
+    DrawSliderInt("Initial alive", game.initialAlivePercent, cfg::MIN_INITIAL_ALIVE_PERCENT, cfg::MAX_INITIAL_ALIVE_PERCENT, PANEL_X, SLIDER_ALIVE_Y);
+    DrawSliderInt("Speed", game.speedMultiplier, cfg::MIN_SPEED_MULTIPLIER, cfg::MAX_SPEED_MULTIPLIER, PANEL_X, SLIDER_SPEED_Y);
 
-    const Rectangle applyButton{ static_cast<float>(PANEL_X), 430.0f, 104.0f, static_cast<float>(BUTTON_HEIGHT) };
-    const Rectangle randomButton{ static_cast<float>(PANEL_X + 120), 430.0f, 104.0f, static_cast<float>(BUTTON_HEIGHT) };
-    const Rectangle clearButton{ static_cast<float>(PANEL_X), 474.0f, 104.0f, static_cast<float>(BUTTON_HEIGHT) };
-    const Rectangle centerButton{ static_cast<float>(PANEL_X + 120), 474.0f, 104.0f, static_cast<float>(BUTTON_HEIGHT) };
+    const PanelButtons btns = GetPanelButtons();
+    DrawButton(btns.apply, "Apply");
+    DrawButton(btns.random, "Random");
+    DrawButton(btns.clear, "Clear");
+    DrawButton(btns.center, "Center");
 
-    DrawButton(applyButton, "Apply");
-    DrawButton(randomButton, "Random");
-    DrawButton(clearButton, "Clear");
-    DrawButton(centerButton, "Center");
-
-    int gridY = 536;
+    int gridY = BUTTON_ROW2_Y + BUTTON_HEIGHT + 18;
     DrawTextLine("Grid:", PANEL_X, gridY, 16, cfg::TEXT_MUTED_COLOR);
     DrawTextLine(game.showGrid ? "Enabled" : "Disabled", PANEL_X, gridY, 16,
         game.showGrid ? cfg::ALIVE_CELL_COLOR : cfg::TEXT_MUTED_COLOR);

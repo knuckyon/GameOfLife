@@ -128,16 +128,27 @@ namespace {
         BenchmarkResult result;
 
         if (launchConfig.mode == RunMode::BenchmarkSequential) {
-            printf("Starting seq\n");
+            std::printf("Starting seq\n");
             result = RunSequentialBenchmark(launchConfig.benchmark);
         }
         else {
-            printf("Starting omp\n");
+            std::printf("Starting omp\n");
             result = RunOpenMpBenchmark(launchConfig.benchmark);
         }
 
         PrintBenchmarkResult(result);
+        AppendBenchmarkCsv(result);
         return 0;
+    }
+
+    void LogFrameStats(double simMs, double drawMs, double frameMs,
+        int stepsThisFrame, const GameState& game)
+    {
+        std::printf(
+            "sim: %.3f ms | draw: %.3f ms | frame: %.3f ms | steps: %d | gen: %d | alive: %d\n",
+            simMs, drawMs, frameMs,
+            stepsThisFrame, game.generation, game.aliveCells
+        );
     }
 
     int RunDemoMode() {
@@ -147,8 +158,8 @@ namespace {
 #ifdef _OPENMP
         const int maxThreads = omp_get_num_procs();
 
-        omp_set_dynamic(0);              // «апрещаем OpenMP самовольно мен€ть число потоков.
-        omp_set_num_threads(maxThreads); // »спользуем максимум доступных логических потоков.
+        omp_set_dynamic(0);              // Disable dynamic thread adjustment by the OpenMP runtime.
+        omp_set_num_threads(maxThreads); // Use all available logical processors.
 
         std::printf("OpenMP enabled\n");
         std::printf("Available processors: %d\n", omp_get_num_procs());
@@ -228,16 +239,7 @@ namespace {
             logTimer += dt;
 
             if (logTimer >= 0.5) {
-                std::printf(
-                    "sim: %.3f ms | draw: %.3f ms | frame: %.3f ms | steps: %d | gen: %d | alive: %d\n",
-                    simMs,
-                    drawMs,
-                    frameMs,
-                    stepsThisFrame,
-                    game.generation,
-                    game.aliveCells
-                );
-
+                LogFrameStats(simMs, drawMs, frameMs, stepsThisFrame, game);
                 logTimer = 0.0;
             }
         }

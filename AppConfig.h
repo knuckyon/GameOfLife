@@ -27,6 +27,9 @@ namespace cfg {
 
     constexpr float GRID_VISIBILITY_THRESHOLD = 6.0f;
 
+    // Directory for benchmark CSV output files. Use "." for the working directory.
+    constexpr const char* BENCHMARK_OUTPUT_DIR = "./RESULTS";
+
     constexpr int BASE_GENERATION_TPS = 4;
     constexpr int MIN_SPEED_MULTIPLIER = 1;
     constexpr int MAX_SPEED_MULTIPLIER = 8;
@@ -58,6 +61,5 @@ inline Rectangle GetSidePanelBounds() {
     };
 }
 
-inline bool IsMouseOverSidePanel() {
-    return CheckCollisionPointRec(GetMousePosition(), GetSidePanelBounds());
-}
+// Defined in AppConfig.cpp — requires raylib GetMousePosition().
+bool IsMouseOverSidePanel();

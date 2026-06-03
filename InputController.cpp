@@ -52,7 +52,6 @@ void HandleCellDrawing(GameState& game) {
 
     if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) || IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) {
         game.isDrawing = true;
-        game.drawValue = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
     }
 
     if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT) || IsMouseButtonReleased(MOUSE_BUTTON_RIGHT)) {
@@ -63,12 +62,15 @@ void HandleCellDrawing(GameState& game) {
         return;
     }
 
+    // Update drawValue every frame so that switching from LMB to RMB mid-stroke
+    // immediately switches between drawing and erasing.
+    game.drawValue = IsMouseButtonDown(MOUSE_BUTTON_LEFT);
+
     const Vector2 worldPosition = GetScreenToWorld2D(GetMousePosition(), game.camera);
     const int cellX = static_cast<int>(worldPosition.x) / cfg::CELL_SIZE;
     const int cellY = static_cast<int>(worldPosition.y) / cfg::CELL_SIZE;
 
     if (cellX >= 0 && cellX < game.cols && cellY >= 0 && cellY < game.rows) {
         SetCellAlive(game, cellX, cellY, game.drawValue);
-        CountAliveCells(game);
     }
 }

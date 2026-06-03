@@ -1,12 +1,15 @@
 #include "Benchmark.h"
 
+#include "AppConfig.h"
 #include "GameLogic.h"
 
 #include <algorithm>
 #include <chrono>
 #include <cstdio>
+#include <cstring>
 #include <limits>
 #include <random>
+#include <string>
 #include <vector>
 
 #ifdef _OPENMP
@@ -70,7 +73,7 @@ namespace {
             std::printf("OpenMP enabled\n");
             std::printf("Requested threads: %d\n", config.threads);
             std::printf("Max OpenMP threads: %d\n", omp_get_max_threads());
-    }
+        }
         else {
             std::printf("OpenMP enabled\n");
             std::printf("Using default OpenMP threads: %d\n", omp_get_max_threads());
@@ -79,7 +82,7 @@ namespace {
         std::printf("OpenMP is NOT enabled. Build target was compiled without /openmp.\n");
         (void)config;
 #endif
-}
+    }
 
     BenchmarkResult RunBenchmark(
         const BenchmarkConfig& config,
@@ -135,16 +138,16 @@ namespace {
 }
 
 BenchmarkResult RunSequentialBenchmark(const BenchmarkConfig& config) {
-    return RunBenchmark(config, "sequential", StepSimulation, 1);
+    return RunBenchmark(config, "seq", StepSimulation, 1);
 }
 
 BenchmarkResult RunOpenMpBenchmark(const BenchmarkConfig& config) {
     ConfigureOpenMp(config);
-    return RunBenchmark(config, "openmp", StepSimulationOpenMP, GetOpenMpThreadCount(config));
+    return RunBenchmark(config, "omp", StepSimulationOpenMP, GetOpenMpThreadCount(config));
 }
 
 void PrintBenchmarkResult(const BenchmarkResult& result) {
-    std::printf("=== Game of Life benchmark: %s ===\n", result.modeName);
+    std::printf("=== Game of Life benchmark: %s ===\n", result.modeName.data());
     std::printf("------------- Simulation params ------------\n");
     std::printf("Field:          %d x %d\n", result.rows, result.cols);
     std::printf("Total cells:    %d\n", result.totalCells);
@@ -162,6 +165,73 @@ void PrintBenchmarkResult(const BenchmarkResult& result) {
     std::printf("Cells/sec:      %.3f\n", result.cellsPerSecond);
 }
 
-void AppendBenchmarkCsv(const char* path, const BenchmarkResult& result) {
+namespace {
+    // fopen / fopen_s wrapper — fopen_s is required on MSVC to avoid C4996.
+    std::FILE* OpenFile(const char* path, const char* mode) {
+#ifdef _MSC_VER
+        std::FILE* f = nullptr;
+        fopen_s(&f, path, mode);
+        return f;
+#else
+        return std::fopen(path, mode);
+#endif
+    }
+}
 
+std::string BuildCsvPath(const BenchmarkResult& result) {
+    // Format: benchmark_seq_500x500.csv  or  benchmark_omp_500x500.csv
+    // Placed in cfg::BENCHMARK_OUTPUT_DIR ("." by default).
+    std::string path = cfg::BENCHMARK_OUTPUT_DIR;
+
+    if (!path.empty() && path.back() != '/' && path.back() != '\\') {
+        path += '/';
+    }
+
+    path += "benchmark_";
+    path += result.modeName.data();   // "seq" / "omp"
+    path += '_';
+    path += std::to_string(result.rows);
+    path += 'x';
+    path += std::to_string(result.cols);
+    path += ".csv";
+
+    return path;
+}
+
+void AppendBenchmarkCsv(const BenchmarkResult& result) {
+    const std::string path = BuildCsvPath(result);
+
+    // Always create a fresh file — mode "w" truncates if it already exists.
+    std::FILE* f = OpenFile(path.c_str(), "w");
+    if (!f) {
+        std::printf("AppendBenchmarkCsv: cannot open '%s' for writing\n", path.c_str());
+        return;
+    }
+
+    // Header row
+    std::fprintf(f,
+        "mode,rows,cols,total_cells,threads,"
+        "warmup_steps,measured_steps,"
+        "initial_alive,final_alive,"
+        "total_ms,avg_step_ms,min_step_ms,max_step_ms,"
+        "steps_per_sec,cells_per_sec\n"
+    );
+
+    // Data row
+    std::fprintf(f,
+        "%s,%d,%d,%d,%d,"
+        "%d,%d,"
+        "%u,%u,"
+        "%.6f,%.6f,%.6f,%.6f,"
+        "%.3f,%.3f\n",
+        result.modeName.data(),
+        result.rows, result.cols, result.totalCells, result.threads,
+        result.warmupSteps, result.measuredSteps,
+        result.initialAliveCells, result.finalAliveCells,
+        result.totalMs, result.avgStepMs, result.minStepMs, result.maxStepMs,
+        result.stepsPerSecond, result.cellsPerSecond
+    );
+
+    std::fclose(f);
+    std::printf("Benchmark results saved to: %s\n", path.c_str());
 }

@@ -1,7 +1,7 @@
 #pragma once
 
-#include <vector>
 #include <cstdint>
+#include <vector>
 #include "raylib.h"
 #include "AppConfig.h"
 
@@ -38,5 +38,10 @@ inline bool IsCellAlive(const GameState& game, int x, int y) {
 }
 
 inline void SetCellAlive(GameState& game, int x, int y, bool value) {
-    game.cells[CellIndex(game, x, y)] = value ? 1 : 0;
+    auto& cell = game.cells[static_cast<std::size_t>(CellIndex(game, x, y))];
+    const bool wasAlive = (cell != 0);
+    if (wasAlive != value) {
+        game.aliveCells += value ? 1 : -1;
+    }
+    cell = value ? 1 : 0;
 }
